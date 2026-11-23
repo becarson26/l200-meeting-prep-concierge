@@ -27,8 +27,10 @@ from app.app_utils.a2a import attach_a2a_routes
 from app.app_utils.reasoning_engine_adapter import (
     attach_reasoning_engine_routes,
 )
+from app.secrets import bootstrap_runtime_secrets
 
 load_dotenv()
+bootstrap_runtime_secrets()
 allow_origins = (
     os.getenv("ALLOW_ORIGINS", "").split(",") if os.getenv("ALLOW_ORIGINS") else None
 )

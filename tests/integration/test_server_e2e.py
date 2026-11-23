@@ -27,6 +27,8 @@ from typing import Any
 import httpx
 import pytest
 import requests
+
+pytestmark = pytest.mark.llm
 from a2a.client import ClientConfig, create_client
 from a2a.types import (
     Message,

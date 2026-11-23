@@ -93,6 +93,7 @@ from app.observability import (
     configure_tracing,
 )
 from app.plugins import PolicyPlugin
+from app.secrets import bootstrap_runtime_secrets
 from app.prompts import (
     APPROVAL_GATE_AGENT_INSTRUCTION,
     ATTENDEE_AGENT_INSTRUCTION,
@@ -330,11 +331,12 @@ root_agent = LlmAgent(
     after_agent_callback=schedule_background_memory_ingestion_after_agent,
 )
 
-# Initialize structured JSON logging (4.1) and OpenTelemetry tracing (4.3)
-# before constructing App. Importing app.observability also pins
-# ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS=false locally (opt-in PII posture, 4.4).
+# Initialize structured JSON logging (4.1), OpenTelemetry tracing (4.3), and
+# runtime Secret Manager bootstrap (5.3) before constructing App. Importing
+# app.observability also pins ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS=false locally.
 configure_structured_logging()
 configure_tracing()
+bootstrap_runtime_secrets()
 
 # ---------------------------------------------------------------------------
 # ADK App Wiring: Observability, Guardrails, Resumability, Compaction & Cache

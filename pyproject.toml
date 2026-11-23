@@ -17,6 +17,7 @@ dependencies = [
     "aiohttp>=3.13.4",
     "fastapi<0.142.0",
     "google-cloud-logging>=3.12.0,<4.0.0",
+    "google-cloud-secret-manager>=2.20.0,<3.0.0",
     "google-cloud-agentplatform[agent-engines]>=2.2.0,<3.0.0",
     "google-cloud-aiplatform[evaluation]>=2.2.0,<3.0.0",
     "protobuf>=6.31.1,<7.0.0",
@@ -95,7 +96,12 @@ build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 pythonpath = "."
+testpaths = ["tests/unit", "tests/eval", "tests/integration"]
+norecursedirs = ["tests/load_test", ".venv", ".git"]
 asyncio_default_fixture_loop_scope = "session"
+markers = [
+    "llm: live end-to-end tests and evaluations requiring a Gemini API key or GCP credentials",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["app","frontend"]

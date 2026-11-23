@@ -113,6 +113,13 @@ resource "google_vertex_ai_reasoning_engine" "app" {
         name  = "GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY"
         value = "true"
       }
+
+      # Pass only the Secret Manager secret name (never the secret value);
+      # app/secrets.py resolves the payload via Secret Manager at runtime.
+      env {
+        name  = "GEMINI_API_KEY_SECRET_ID"
+        value = google_secret_manager_secret.gemini_api_key.secret_id
+      }
     }
 
     source_code_spec {

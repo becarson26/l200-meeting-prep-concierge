@@ -38,6 +38,7 @@ locals {
     "logging.googleapis.com",
     "cloudtrace.googleapis.com",
     "telemetry.googleapis.com",
+    "secretmanager.googleapis.com",
   ]
 
   deploy_project_ids = {
