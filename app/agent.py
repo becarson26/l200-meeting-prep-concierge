@@ -62,14 +62,31 @@ Guardrails & Human-in-the-Loop wiring:
 from __future__ import annotations
 
 from google.adk.agents import LlmAgent, ParallelAgent, SequentialAgent
+from google.adk.agents.context_cache_config import ContextCacheConfig
 from google.adk.apps import App, ResumabilityConfig
-from google.adk.tools import FunctionTool
+from google.adk.apps.app import EventsCompactionConfig
+from google.adk.apps.llm_event_summarizer import LlmEventSummarizer
+from google.adk.tools import FunctionTool, load_memory
+from google.genai import types
 
 from app.callbacks import (
+    enforce_sliding_history_window_before_model,
+    schedule_background_memory_ingestion_after_agent,
     screen_prompt_injection_before_model,
     validate_output_shape_after_model,
 )
-from app.config import FAST_MODEL, SMART_MODEL, build_gemini_model
+from app.config import (
+    COMPACTION_EVENT_RETENTION_SIZE,
+    COMPACTION_INTERVAL,
+    COMPACTION_OVERLAP_SIZE,
+    COMPACTION_TOKEN_THRESHOLD,
+    CONTEXT_CACHE_INTERVALS,
+    CONTEXT_CACHE_MIN_TOKENS,
+    CONTEXT_CACHE_TTL_SECONDS,
+    FAST_MODEL,
+    SMART_MODEL,
+    build_gemini_model,
+)
 from app.plugins import PolicyPlugin
 from app.prompts import (
     APPROVAL_GATE_AGENT_INSTRUCTION,
@@ -109,6 +126,14 @@ send_brief_tool = FunctionTool(
     require_confirmation=True,
 )
 
+# Shared before_model_callback chain: screen user input for prompt injection
+# first, then enforce the complementary HISTORY_WINDOW sliding window on
+# ephemeral request history (never touching durable user:-scoped state).
+_BEFORE_MODEL_CALLBACKS = [
+    screen_prompt_injection_before_model,
+    enforce_sliding_history_window_before_model,
+]
+
 # ---------------------------------------------------------------------------
 # Stage 1 (Parallel Gather): Attendee Dossiers + Account/Meeting History
 # ---------------------------------------------------------------------------
@@ -125,7 +150,7 @@ attendee_agent = LlmAgent(
     output_key="attendee_dossiers",
     disallow_transfer_to_parent=True,
     disallow_transfer_to_peers=True,
-    before_model_callback=screen_prompt_injection_before_model,
+    before_model_callback=_BEFORE_MODEL_CALLBACKS,
     after_model_callback=validate_output_shape_after_model,
 )
 
@@ -141,7 +166,7 @@ history_agent = LlmAgent(
     output_key="account_history",
     disallow_transfer_to_parent=True,
     disallow_transfer_to_peers=True,
-    before_model_callback=screen_prompt_injection_before_model,
+    before_model_callback=_BEFORE_MODEL_CALLBACKS,
     after_model_callback=validate_output_shape_after_model,
 )
 
@@ -170,7 +195,7 @@ brief_agent = LlmAgent(
     output_key="brief_draft",
     disallow_transfer_to_parent=True,
     disallow_transfer_to_peers=True,
-    before_model_callback=screen_prompt_injection_before_model,
+    before_model_callback=_BEFORE_MODEL_CALLBACKS,
     after_model_callback=validate_output_shape_after_model,
 )
 
@@ -192,7 +217,7 @@ critic_agent = LlmAgent(
     output_key="critique",
     disallow_transfer_to_parent=True,
     disallow_transfer_to_peers=True,
-    before_model_callback=screen_prompt_injection_before_model,
+    before_model_callback=_BEFORE_MODEL_CALLBACKS,
     after_model_callback=validate_output_shape_after_model,
 )
 
@@ -210,8 +235,9 @@ presenter_agent = LlmAgent(
     instruction=PRESENTER_AGENT_INSTRUCTION,
     disallow_transfer_to_parent=True,
     disallow_transfer_to_peers=True,
-    before_model_callback=screen_prompt_injection_before_model,
+    before_model_callback=_BEFORE_MODEL_CALLBACKS,
     after_model_callback=validate_output_shape_after_model,
+    after_agent_callback=schedule_background_memory_ingestion_after_agent,
 )
 
 # ---------------------------------------------------------------------------
@@ -241,7 +267,7 @@ approval_gate_agent = LlmAgent(
     sub_agents=[presenter_agent],
     disallow_transfer_to_parent=True,
     disallow_transfer_to_peers=True,
-    before_model_callback=screen_prompt_injection_before_model,
+    before_model_callback=_BEFORE_MODEL_CALLBACKS,
     after_model_callback=validate_output_shape_after_model,
 )
 
@@ -277,9 +303,10 @@ root_agent = LlmAgent(
     model=build_gemini_model(SMART_MODEL),
     description=(
         "Northwind Telecom's Meeting Prep Concierge coordinator. Handles direct "
-        "meeting/attendee/action-item lookups, confirmation-gated approval and "
-        "simulated brief delivery, post-meeting outcome recording, and delegates "
-        "full meeting-brief preparation to the deterministic prep_workflow."
+        "meeting/attendee/action-item lookups, cross-session memory recall, "
+        "confirmation-gated approval and simulated brief delivery, post-meeting "
+        "outcome recording, and delegates full meeting-brief preparation to the "
+        "deterministic prep_workflow."
     ),
     instruction=PREP_COORDINATOR_INSTRUCTION,
     tools=[
@@ -290,17 +317,43 @@ root_agent = LlmAgent(
         confirm_brief_approval_tool,
         send_brief_tool,
         save_meeting_outcome,
+        load_memory,
     ],
     sub_agents=[prep_workflow],
-    before_model_callback=screen_prompt_injection_before_model,
+    before_model_callback=_BEFORE_MODEL_CALLBACKS,
     after_model_callback=validate_output_shape_after_model,
+    after_agent_callback=schedule_background_memory_ingestion_after_agent,
 )
 
-# Existing App(...) wiring extended with PolicyPlugin (Rubric 3.3) and native
-# resumability required for ADK's built-in tool confirmation stops (Rubric 3.4).
+# ---------------------------------------------------------------------------
+# ADK App Wiring: Guardrails, Resumability, Compaction & Context Caching
+# ---------------------------------------------------------------------------
+# History Compaction & Caching (Rubric 2.2):
+#   - EventsCompactionConfig runs post-invocation using FAST_MODEL (explicit
+#     LlmEventSummarizer so ADK does not default to SMART_MODEL). Compaction
+#     triggers when observed prompt tokens >= COMPACTION_TOKEN_THRESHOLD (12,000,
+#     keeping the newest 6 raw events) OR every COMPACTION_INTERVAL (6) user
+#     invocations with a 2-invocation overlap. Compaction summarizes only
+#     conversational events — durable ``user:``-scoped state is never touched.
+#   - ContextCacheConfig gives each transferred agent its own explicit prompt
+#     cache once the Gemini 3 floor (4,096 tokens) is reached, eliminating
+#     ADK 2.15's uncached multi-agent transfer warning.
 app = App(
     root_agent=root_agent,
     name="app",
     plugins=[PolicyPlugin()],
     resumability_config=ResumabilityConfig(is_resumable=True),
+    events_compaction_config=EventsCompactionConfig(
+        summarizer=LlmEventSummarizer(llm=build_gemini_model(FAST_MODEL)),
+        token_threshold=COMPACTION_TOKEN_THRESHOLD,
+        event_retention_size=COMPACTION_EVENT_RETENTION_SIZE,
+        compaction_interval=COMPACTION_INTERVAL,
+        overlap_size=COMPACTION_OVERLAP_SIZE,
+    ),
+    context_cache_config=ContextCacheConfig(
+        min_tokens=CONTEXT_CACHE_MIN_TOKENS,
+        ttl_seconds=CONTEXT_CACHE_TTL_SECONDS,
+        cache_intervals=CONTEXT_CACHE_INTERVALS,
+        create_http_options=types.HttpOptions(timeout=10_000),
+    ),
 )

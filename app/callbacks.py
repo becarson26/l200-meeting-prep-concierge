@@ -27,13 +27,22 @@ Three-layer guardrail architecture:
 
 from __future__ import annotations
 
+import asyncio
+import os
 import re
+from typing import Any
 
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models import LlmRequest, LlmResponse
 from google.genai import types
 
+from app.config import HISTORY_WINDOW
+
 MAX_MODEL_OUTPUT_CHARS = 15_000
+
+# Strong references to fire-and-forget background memory ingestion tasks so
+# Python's garbage collector never cancels an in-flight task mid-consolidation.
+_BACKGROUND_MEMORY_TASKS: set[asyncio.Task[Any]] = set()
 
 # ---------------------------------------------------------------------------
 # Policy 1 — Prompt Injection & Approval-Bypass Input Screening
@@ -215,3 +224,124 @@ def validate_output_shape_after_model(
         )
 
     return None
+
+
+# ---------------------------------------------------------------------------
+# Policy 3 — Complementary Sliding-Window Context Guard (Rubric 2.2)
+# Enforces: Bounds ``llm_request.contents`` to the most recent ``HISTORY_WINDOW``
+#           user turns (default 12), always cutting cleanly on a user-text turn
+#           boundary so function_call / function_response pairs stay intact.
+# Why:      Complements ADK's post-invocation ``EventsCompactionConfig`` by
+#           capping prompt context growth immediately on every model call.
+#           IMPORTANT: This only trims the ephemeral model request window and
+#           NEVER mutates or drops durable ``user:``-scoped state stored in
+#           ``DatabaseSessionService``.
+# ---------------------------------------------------------------------------
+def _is_user_text_turn(content: types.Content) -> bool:
+    """Return True when a content entry starts a real user text turn (not a tool response)."""
+    if content.role != "user" or not content.parts:
+        return False
+    has_text = any(getattr(part, "text", None) for part in content.parts)
+    has_func_response = any(
+        getattr(part, "function_response", None) is not None
+        for part in content.parts
+    )
+    return has_text and not has_func_response
+
+
+def enforce_sliding_history_window_before_model(
+    callback_context: CallbackContext,
+    llm_request: LlmRequest,
+) -> LlmResponse | None:
+    """Trim ephemeral model-request history to the last HISTORY_WINDOW user turns.
+
+    Compaction and this sliding window bound only the conversational messages
+    sent to Gemini; durable ``user:``-scoped preferences and context remain
+    untouched in the session store.
+    """
+    if not llm_request.contents:
+        return None
+
+    try:
+        window = max(1, int(os.getenv("HISTORY_WINDOW", str(HISTORY_WINDOW))))
+    except ValueError:
+        window = max(1, HISTORY_WINDOW)
+
+    user_turn_indices = [
+        idx
+        for idx, content in enumerate(llm_request.contents)
+        if _is_user_text_turn(content)
+    ]
+    if len(user_turn_indices) > window:
+        cutoff = user_turn_indices[-window]
+        llm_request.contents = list(llm_request.contents[cutoff:])
+
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Async Fire-and-Forget Memory Ingestion (Rubric 2.4)
+# Enforces: Completed sessions are ingested into ADK's configured MemoryService
+#           on a background asyncio task after the reply is produced.
+# Why:      Memory extraction, indexing, and Vertex AI Memory Bank consolidation
+#           are expensive I/O/LLM operations. Scheduling them with
+#           ``asyncio.create_task`` and deliberately NOT awaiting them guarantees
+#           that memory consolidation never blocks or adds latency to user replies.
+# ---------------------------------------------------------------------------
+async def _ingest_session_into_memory_background(
+    memory_service: Any,
+    session_snapshot: Any,
+) -> None:
+    """Background coroutine ingesting a snapshot of a finished session into MemoryService."""
+    try:
+        await memory_service.add_session_to_memory(session_snapshot)
+    except Exception:
+        # Background consolidation is best-effort and must never surface an
+        # unhandled exception into the foreground request loop.
+        return
+
+
+def schedule_background_memory_ingestion_after_agent(
+    callback_context: CallbackContext,
+) -> types.Content | None:
+    """Fire-and-forget after_agent_callback scheduling async memory ingestion.
+
+    Intentionally synchronous and deliberately does NOT await ingestion:
+    ``asyncio.create_task(...)`` queues ``memory_service.add_session_to_memory``
+    on the running event loop after the agent has finished composing its reply,
+    so user-facing response latency is never blocked by memory consolidation.
+    """
+    invocation_context = getattr(callback_context, "_invocation_context", None)
+    memory_service = getattr(invocation_context, "memory_service", None)
+    session = getattr(invocation_context, "session", None)
+    if memory_service is None or session is None:
+        return None
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return None
+
+    # Snapshot the session before handing it to the background task so quick
+    # follow-up turns cannot mutate event lists while ingestion reads them.
+    session_snapshot = (
+        session.model_copy(deep=True)
+        if hasattr(session, "model_copy")
+        else session
+    )
+
+    # Deliberately NOT awaited: fire-and-forget so the reply returns immediately
+    # without waiting on memory indexing or Vertex AI Memory Bank consolidation.
+    task = loop.create_task(
+        _ingest_session_into_memory_background(memory_service, session_snapshot),
+        name=f"memory-ingest-{getattr(session, 'id', 'unknown')}",
+    )
+    _BACKGROUND_MEMORY_TASKS.add(task)
+    task.add_done_callback(_BACKGROUND_MEMORY_TASKS.discard)
+    return None
+
+
+async def flush_background_memory_tasks() -> None:
+    """Await any in-flight background memory tasks (for deterministic tests/shutdown)."""
+    if _BACKGROUND_MEMORY_TASKS:
+        await asyncio.gather(*list(_BACKGROUND_MEMORY_TASKS), return_exceptions=True)

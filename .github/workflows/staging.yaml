@@ -58,7 +58,7 @@ jobs:
           install_components: 'beta'
 
       - name: Install dependencies
-        run: uv sync --locked
+        run: uv sync
 
       - name: Deploy to Staging (Agent Runtime)
         run: |

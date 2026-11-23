@@ -101,6 +101,10 @@ Tool-Selection & Delegation Policy:
 - Post-meeting learning capture:
   - When the user reports decisions, risks, or follow-ups after a meeting ->
     save_meeting_outcome.
+- Cross-session memory recall:
+  - When the user refers to personal preferences, remarks, or context mentioned
+    in passing during an earlier conversation (outside the structured fixtures) ->
+    call load_memory(query=...) to search prior ingested sessions.
 - Error recovery:
   - Every tool returns either status='ok' or status='error' with a concrete
     recovery_hint (or policy_violation). Always read and follow recovery_hint
@@ -134,6 +138,12 @@ Escalation Rules:
 - Out-of-scope requests: Politely decline requests unrelated to Northwind
   Telecom meeting preparation, follow-up tracking, or brief distribution."""
 
+# Section 7: Durable User-Scoped Context (survives across sessions in DatabaseSessionService)
+_COORDINATOR_PERSISTENT_CONTEXT = """\
+Durable User Context (from prior sessions, empty if none saved yet):
+- Recent user meeting context: {user:context?}
+- Cached attendee preferences: {user:attendee_preferences?}"""
+
 PREP_COORDINATOR_INSTRUCTION: str = "\n\n".join(
     [
         _COORDINATOR_PERSONA_AND_ROLE,
@@ -142,6 +152,7 @@ PREP_COORDINATOR_INSTRUCTION: str = "\n\n".join(
         _COORDINATOR_TOOL_SELECTION_POLICY,
         _COORDINATOR_OUTPUT_FORMAT,
         _COORDINATOR_ESCALATION_RULES,
+        _COORDINATOR_PERSISTENT_CONTEXT,
     ]
 )
 

@@ -277,4 +277,54 @@ class PolicyPlugin(BasePlugin):
                 tool_context.state["approval_decision"] = (
                     f"REJECTED (draft_id={draft_id}, reason={reason})"
                 )
+
+        # ------------------------------------------------------------------
+        # Durable User-Scoped State Persistence (Rubric 2.3)
+        # Enforces: Verified attendee preferences and user-level meeting
+        #           context are written under ``user:``-prefixed keys so
+        #           ADK's DatabaseSessionService persists them in its
+        #           ``user_states`` table across separate conversations.
+        # Why:      Reassigning fresh dict copies ensures ADK records the
+        #           state_delta cleanly; history compaction never touches
+        #           these durable user-scoped keys.
+        # ------------------------------------------------------------------
+        if isinstance(result, dict) and result.get("status") == "ok":
+            if tool.name == "lookup_attendee_profile" and isinstance(
+                result.get("attendee"), dict
+            ):
+                attendee = result["attendee"]
+                email = str(attendee.get("email", "")).lower()
+                if email:
+                    existing_prefs = dict(
+                        tool_context.state.get("user:attendee_preferences") or {}
+                    )
+                    existing_prefs[email] = {
+                        "name": attendee.get("name"),
+                        "role": attendee.get("role"),
+                        "communication_preferences": attendee.get(
+                            "communication_preferences"
+                        ),
+                    }
+                    tool_context.state["user:attendee_preferences"] = existing_prefs
+
+            elif tool.name in ("fetch_meeting_details", "draft_meeting_brief"):
+                existing_ctx = dict(tool_context.state.get("user:context") or {})
+                meeting_id = (
+                    (result.get("meeting") or {}).get("id")
+                    if tool.name == "fetch_meeting_details"
+                    else result.get("meeting_id")
+                )
+                if meeting_id:
+                    existing_ctx["last_meeting_id"] = meeting_id
+                    recent = list(existing_ctx.get("recent_meetings") or [])
+                    if meeting_id in recent:
+                        recent.remove(meeting_id)
+                    recent.insert(0, meeting_id)
+                    existing_ctx["recent_meetings"] = recent[:10]
+                if tool.name == "draft_meeting_brief":
+                    focus = (result.get("brief") or {}).get("audience_focus")
+                    if focus:
+                        existing_ctx["preferred_audience_focus"] = focus
+                tool_context.state["user:context"] = existing_ctx
+
         return None

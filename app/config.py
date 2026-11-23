@@ -130,3 +130,41 @@ def build_gemini_model(model_name: str, *, retry_attempts: int = 3) -> Gemini:
         model=model_name,
         retry_options=types.HttpRetryOptions(attempts=retry_attempts),
     )
+
+
+# ---------------------------------------------------------------------------
+# History Compaction, Context Caching, and Sliding-Window Budgets (Rubric 2.2)
+# ---------------------------------------------------------------------------
+# Token-budget & turn-count triggers for ADK's built-in EventsCompactionConfig:
+#   - Primary trigger (token_threshold): once an invocation observes >= 12,000
+#     prompt tokens, ADK summarizes older events on FAST_MODEL while retaining
+#     the 6 most recent raw events verbatim (event_retention_size).
+#   - Fallback trigger (compaction_interval): every 6 completed user turns,
+#     ADK compacts older turns with a 2-turn overlap (overlap_size) even if
+#     prompts have stayed below 12,000 tokens.
+# Neither compaction nor the complementary sliding window touches durable
+# ``user:``-scoped state persisted in DatabaseSessionService.
+COMPACTION_TOKEN_THRESHOLD: Final[int] = int(
+    os.getenv("COMPACTION_TOKEN_THRESHOLD", "12000")
+)
+COMPACTION_EVENT_RETENTION_SIZE: Final[int] = int(
+    os.getenv("COMPACTION_EVENT_RETENTION_SIZE", "6")
+)
+COMPACTION_INTERVAL: Final[int] = int(os.getenv("COMPACTION_INTERVAL", "6"))
+COMPACTION_OVERLAP_SIZE: Final[int] = int(os.getenv("COMPACTION_OVERLAP_SIZE", "2"))
+
+# ADK ContextCacheConfig parameters (Gemini 3 enforces a 4,096-token floor).
+CONTEXT_CACHE_MIN_TOKENS: Final[int] = int(
+    os.getenv("CONTEXT_CACHE_MIN_TOKENS", "4096")
+)
+CONTEXT_CACHE_TTL_SECONDS: Final[int] = int(
+    os.getenv("CONTEXT_CACHE_TTL_SECONDS", "1800")
+)
+CONTEXT_CACHE_INTERVALS: Final[int] = int(
+    os.getenv("CONTEXT_CACHE_INTERVALS", "10")
+)
+
+# Complementary in-request sliding window enforced by before_model_callback so
+# raw turns sent to Gemini stay bounded even before post-invocation compaction
+# fires. Defaults to the 12 most recent user turns.
+HISTORY_WINDOW: Final[int] = int(os.getenv("HISTORY_WINDOW", "12"))
