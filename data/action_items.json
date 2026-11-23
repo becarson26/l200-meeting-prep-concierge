@@ -1,0 +1,134 @@
+[
+  {
+    "id": "AI-001",
+    "meeting_id": "M-001",
+    "title": "Submit Ridgeway municipal conduit permit amendments",
+    "description": "File updated trenching route drawings and traffic-control attachments with the Ridgeway District permitting office.",
+    "owner": "nadia.okafor@northwind.example",
+    "due_date": "2026-10-25",
+    "priority": "high",
+    "status": "closed",
+    "completed_date": "2026-10-23"
+  },
+  {
+    "id": "AI-002",
+    "meeting_id": "M-001",
+    "title": "Reconcile Q4 optical transceiver unit-cost variance",
+    "description": "Quantify the 9% supplier price increase on 400G optical modules and confirm whether Q4 CapEx contingency covers the delta.",
+    "owner": "devon.alvarez@northwind.example",
+    "due_date": "2026-11-20",
+    "priority": "high",
+    "status": "open",
+    "completed_date": null
+  },
+  {
+    "id": "AI-003",
+    "meeting_id": "M-001",
+    "title": "Publish splice-window customer maintenance playbook",
+    "description": "Finalize the 72-hour advance notice template, customer escalation tree, and temporary microwave failover checklist for Northern Corridor accounts.",
+    "owner": "priya.subramanian@northwind.example",
+    "due_date": "2026-11-24",
+    "priority": "medium",
+    "status": "open",
+    "completed_date": null
+  },
+  {
+    "id": "AI-004",
+    "meeting_id": "M-002",
+    "title": "Harden Summit Billing v4 database connection pool",
+    "description": "Raise connection-pool ceiling, enforce query timeouts, and deploy a circuit breaker on bulk invoice export endpoints.",
+    "owner": "tomasz.kowalczyk@northwind.example",
+    "due_date": "2026-11-04",
+    "priority": "high",
+    "status": "closed",
+    "completed_date": "2026-11-02"
+  },
+  {
+    "id": "AI-005",
+    "meeting_id": "M-002",
+    "title": "Reconcile October billing incident SLA credit estimates",
+    "description": "Compile affected enterprise tenant list and draft proactive credit memo amounts following the October 24 latency spike.",
+    "owner": "callum.macleod@northwind.example",
+    "due_date": "2026-11-12",
+    "priority": "high",
+    "status": "closed",
+    "completed_date": "2026-11-11"
+  },
+  {
+    "id": "AI-006",
+    "meeting_id": "M-002",
+    "title": "Enforce per-tenant API rate limits on invoice exports",
+    "description": "Roll out configurable burst and sustained rate limits on Summit Billing v4 export APIs and document control evidence for the December audit.",
+    "owner": "mei-ling.zhou@northwind.example",
+    "due_date": "2026-12-03",
+    "priority": "high",
+    "status": "open",
+    "completed_date": null
+  },
+  {
+    "id": "AI-007",
+    "meeting_id": "M-003",
+    "title": "Build 3-year margin model for Platinum 99.99% uptime tier",
+    "description": "Model dual-path provisioning CapEx, expected SLA credit reserve, and gross margin across conservative and target adoption scenarios.",
+    "owner": "devon.alvarez@northwind.example",
+    "due_date": "2026-11-27",
+    "priority": "high",
+    "status": "open",
+    "completed_date": null
+  },
+  {
+    "id": "AI-008",
+    "meeting_id": "M-003",
+    "title": "Draft revised SLA credit cap and dual-path failover clauses",
+    "description": "Prepare updated enterprise contract addendum incorporating the 25% monthly credit cap and Aurora Core dual-homing prerequisites.",
+    "owner": "priya.subramanian@northwind.example",
+    "due_date": "2026-11-18",
+    "priority": "medium",
+    "status": "closed",
+    "completed_date": "2026-11-17"
+  },
+  {
+    "id": "AI-009",
+    "meeting_id": "M-003",
+    "title": "Summarize renewal objections from top 10 enterprise accounts",
+    "description": "Consolidate Q1 2027 renewal feedback on uptime tiers, billing reliability, and compliance reporting expectations ahead of pricing sign-off.",
+    "owner": "callum.macleod@northwind.example",
+    "due_date": "2026-11-21",
+    "priority": "medium",
+    "status": "open",
+    "completed_date": null
+  },
+  {
+    "id": "AI-010",
+    "meeting_id": "M-004",
+    "title": "Run 48-hour mTLS certificate rotation soak test in Lakeside staging",
+    "description": "Validate zero-drop session continuity across automated certificate renewals on Lakeside staging ring routers.",
+    "owner": "tomasz.kowalczyk@northwind.example",
+    "due_date": "2026-11-22",
+    "priority": "high",
+    "status": "closed",
+    "completed_date": "2026-11-21"
+  },
+  {
+    "id": "AI-011",
+    "meeting_id": "M-004",
+    "title": "Export immutable privileged-access audit log samples",
+    "description": "Generate signed 30-day privileged-access log extracts from Aurora Core management plane for external compliance assessors.",
+    "owner": "mei-ling.zhou@northwind.example",
+    "due_date": "2026-12-04",
+    "priority": "high",
+    "status": "open",
+    "completed_date": null
+  },
+  {
+    "id": "AI-012",
+    "meeting_id": "M-004",
+    "title": "Approve Aurora Core canary cutover rollback thresholds",
+    "description": "Review Lakeside soak-test telemetry and sign off on automated packet-loss and handshake-latency triggers for production rollback.",
+    "owner": "nadia.okafor@northwind.example",
+    "due_date": "2026-11-26",
+    "priority": "medium",
+    "status": "open",
+    "completed_date": null
+  }
+]

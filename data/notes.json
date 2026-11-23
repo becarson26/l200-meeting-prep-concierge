@@ -1,0 +1,76 @@
+{
+  "M-001": {
+    "meeting_id": "M-001",
+    "recorded_by": "priya.subramanian@northwind.example",
+    "recorded_at": "2026-10-14T15:10:00Z",
+    "summary": "Aligned on a December 2 target cutover for Phase 2 of the Northern Corridor fiber expansion. Engineering confirmed splice crews are booked, but Ridgeway conduit permit amendments and a 9% spike in optical transceiver pricing must be resolved before the November 25 go/no-go checkpoint.",
+    "key_decisions": [
+      "Hold December 2 as the primary Northern Corridor cutover date pending November 25 checkpoint approval.",
+      "Prioritize Ridgeway District permit amendment filing before opening secondary spurs.",
+      "Require 72-hour advance maintenance notice to enterprise accounts prior to any splice window."
+    ],
+    "open_questions": [
+      "Can the transceiver cost variance be absorbed inside existing Q4 CapEx contingency without CFO escalation?",
+      "Which mid-market enterprise circuits require temporary microwave failover during the 2-hour splice window?"
+    ],
+    "risks_raised": [
+      "Supplier lead-time drift on 400G optical modules could push cutover by two weeks if purchase orders slip.",
+      "Delayed municipal sign-off in Ridgeway District could strand splice crews."
+    ]
+  },
+  "M-002": {
+    "meeting_id": "M-002",
+    "recorded_by": "tomasz.kowalczyk@northwind.example",
+    "recorded_at": "2026-10-28T16:55:00Z",
+    "summary": "Reviewed the October 24 incident where Summit Billing v4 API p99 latency climbed to 14.2 seconds for 38 minutes. Root cause was an unthrottled bulk invoice export exhausting the primary PostgreSQL connection pool. Engineering committed to immediate pool hardening and security requested per-tenant rate limits before the December audit.",
+    "key_decisions": [
+      "Raise connection-pool ceiling and deploy a circuit breaker on bulk export queries by November 4.",
+      "Route bulk invoice exports to a dedicated read replica starting in the next maintenance release.",
+      "Standardize proactive SLA credit memos for any enterprise tenant exceeding 15 minutes of degraded billing API responses."
+    ],
+    "open_questions": [
+      "What per-tenant burst quota balances automated ERP integrations against abuse protection?"
+    ],
+    "risks_raised": [
+      "Lack of per-tenant API rate limiting will be flagged as a medium finding in the December compliance audit if unclosed.",
+      "Two enterprise accounts approaching Q1 renewal cited billing portal timeouts during their quarterly business reviews."
+    ]
+  },
+  "M-003": {
+    "meeting_id": "M-003",
+    "recorded_by": "callum.macleod@northwind.example",
+    "recorded_at": "2026-11-06T16:15:00Z",
+    "summary": "Evaluated renewal strategy for Q1 2027 enterprise contracts totaling 18% of recurring revenue. Sales proposed launching a Platinum 99.99% uptime tier bundled with dual-path failover; Finance requested a full 3-year margin model before locking pricing or raising SLA credit caps.",
+    "key_decisions": [
+      "Anchor Platinum tier eligibility to circuits provisioned on dual-homed Aurora Core nodes.",
+      "Cap monthly SLA credits at 25% of monthly recurring charges across all new enterprise templates.",
+      "Target December 1 for final cross-functional pricing and legal addendum sign-off."
+    ],
+    "open_questions": [
+      "Do regulated enterprise prospects require dedicated compliance reporting bundled into the Platinum tier?",
+      "How many renewing accounts would downgrade if Standard tier remains at 99.9% uptime?"
+    ],
+    "risks_raised": [
+      "Offering 99.99% SLAs before Aurora Core zero-trust and failover upgrades complete could create unmanaged credit liability.",
+      "Delayed pricing sign-off past December 1 compresses redline time for Q1 renewals."
+    ]
+  },
+  "M-004": {
+    "meeting_id": "M-004",
+    "recorded_by": "mei-ling.zhou@northwind.example",
+    "recorded_at": "2026-11-17T14:25:00Z",
+    "summary": "Reviewed zero-trust readiness for Aurora Core routers ahead of the December annual security audit. Architecture presented the automated mTLS certificate rotation plan for the Lakeside staging ring, and Security specified immutable log export evidence needed prior to external assessor kickoff.",
+    "key_decisions": [
+      "Execute a 48-hour mTLS certificate rotation soak test in Lakeside staging before approving production canary rollout.",
+      "Define explicit packet-loss and handshake-latency rollback thresholds before enabling strict mTLS enforcement.",
+      "Include signed privileged-access log samples in the December 8 audit briefing packet."
+    ],
+    "open_questions": [
+      "Will legacy telemetry collectors at Harborview PoP support short-lived 24-hour certificates without firmware upgrades?"
+    ],
+    "risks_raised": [
+      "Any unmonitored certificate expiration on core edge routers would trigger widespread BGP session flaps.",
+      "Audit evidence delivery must complete by December 4 to leave buffer before the December 8 briefing."
+    ]
+  }
+}

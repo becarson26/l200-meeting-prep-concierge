@@ -1,0 +1,80 @@
+[
+  {
+    "name": "Nadia Okafor",
+    "role": "VP of Network Engineering",
+    "organisation": "Northwind Telecom",
+    "department": "Network Engineering",
+    "email": "nadia.okafor@northwind.example",
+    "communication_preferences": {
+      "style": "Concise executive bullets upfront, backed by capacity metrics and risk heatmaps.",
+      "pre_read_lead_time_hours": 24,
+      "preferred_channel": "Written brief ahead of live discussion",
+      "dislikes": "Long slide walkthroughs without an explicit decision ask"
+    }
+  },
+  {
+    "name": "Tomasz Kowalczyk",
+    "role": "Principal Systems Architect",
+    "organisation": "Northwind Telecom",
+    "department": "Core Infrastructure",
+    "email": "tomasz.kowalczyk@northwind.example",
+    "communication_preferences": {
+      "style": "Technically precise with architecture diagrams, telemetry percentiles, and failure-mode tables.",
+      "pre_read_lead_time_hours": 24,
+      "preferred_channel": "Async RFC comments before meetings",
+      "dislikes": "Vague delivery estimates without named dependency owners"
+    }
+  },
+  {
+    "name": "Priya Subramanian",
+    "role": "Director of Product Strategy",
+    "organisation": "Northwind Telecom",
+    "department": "Product Management",
+    "email": "priya.subramanian@northwind.example",
+    "communication_preferences": {
+      "style": "Customer-impact framing with clear decision options, trade-offs, and target dates.",
+      "pre_read_lead_time_hours": 12,
+      "preferred_channel": "Timeboxed agenda with explicit owner sign-offs",
+      "dislikes": "Open-ended brainstorming when a go/no-go decision is overdue"
+    }
+  },
+  {
+    "name": "Callum MacLeod",
+    "role": "Head of Enterprise Accounts",
+    "organisation": "Northwind Telecom",
+    "department": "Enterprise Sales",
+    "email": "callum.macleod@northwind.example",
+    "communication_preferences": {
+      "style": "Commercial takeaways focused on renewal risk, SLA credits, and customer communication timelines.",
+      "pre_read_lead_time_hours": 12,
+      "preferred_channel": "Plain-language summary and direct action checklist",
+      "dislikes": "Unexplained network jargon without customer impact translation"
+    }
+  },
+  {
+    "name": "Mei-Ling Zhou",
+    "role": "Chief Information Security Officer",
+    "organisation": "Northwind Telecom",
+    "department": "Security & Compliance",
+    "email": "mei-ling.zhou@northwind.example",
+    "communication_preferences": {
+      "style": "Control mappings, audit evidence links, and explicit risk-acceptance sign-offs.",
+      "pre_read_lead_time_hours": 48,
+      "preferred_channel": "Formal written briefing with traceable minutes",
+      "dislikes": "Informal verbal sign-offs on security exceptions"
+    }
+  },
+  {
+    "name": "Devon Alvarez",
+    "role": "Senior Finance Operations Manager",
+    "organisation": "Northwind Telecom",
+    "department": "Finance & Operations",
+    "email": "devon.alvarez@northwind.example",
+    "communication_preferences": {
+      "style": "CapEx vs. OpEx breakdowns, unit-cost tables, and budget variance thresholds.",
+      "pre_read_lead_time_hours": 24,
+      "preferred_channel": "Structured figures sent at least one business day prior",
+      "dislikes": "Unvetted budget numbers introduced live during sign-off calls"
+    }
+  }
+]

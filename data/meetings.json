@@ -1,0 +1,141 @@
+[
+  {
+    "id": "M-001",
+    "title": "Q4 Northern Corridor Fiber Rollout Kickoff",
+    "date": "2026-10-14",
+    "time_utc": "14:00",
+    "duration_minutes": 60,
+    "status": "past",
+    "attendees": [
+      "nadia.okafor@northwind.example",
+      "tomasz.kowalczyk@northwind.example",
+      "priya.subramanian@northwind.example",
+      "devon.alvarez@northwind.example"
+    ],
+    "agenda": [
+      "Confirm Phase 2 fiber splice schedule across Northern Corridor depots",
+      "Review Q4 CapEx allocation and optical transceiver procurement lead times",
+      "Identify municipal conduit permit bottlenecks in Ridgeway District",
+      "Assign regional cutover readiness leads"
+    ]
+  },
+  {
+    "id": "M-002",
+    "title": "Summit Billing v4 Latency Incident Postmortem",
+    "date": "2026-10-28",
+    "time_utc": "16:00",
+    "duration_minutes": 45,
+    "status": "past",
+    "attendees": [
+      "tomasz.kowalczyk@northwind.example",
+      "priya.subramanian@northwind.example",
+      "callum.macleod@northwind.example",
+      "mei-ling.zhou@northwind.example"
+    ],
+    "agenda": [
+      "Walk through October 24 billing API p99 latency spike timeline",
+      "Confirm root cause in database connection-pool exhaustion during batch exports",
+      "Quantify enterprise SLA credit exposure and customer comms plan",
+      "Assign permanent engineering and security rate-limiting fixes"
+    ]
+  },
+  {
+    "id": "M-003",
+    "title": "Enterprise SLA Renewal Strategy Review",
+    "date": "2026-11-06",
+    "time_utc": "15:00",
+    "duration_minutes": 60,
+    "status": "past",
+    "attendees": [
+      "priya.subramanian@northwind.example",
+      "callum.macleod@northwind.example",
+      "devon.alvarez@northwind.example",
+      "nadia.okafor@northwind.example"
+    ],
+    "agenda": [
+      "Review Q1 2027 enterprise renewal pipeline and churn-risk accounts",
+      "Evaluate proposed Platinum 99.99% uptime tier unit economics",
+      "Align SLA credit cap language with dual-path failover investments",
+      "Define deliverables required before December commercial sign-off"
+    ]
+  },
+  {
+    "id": "M-004",
+    "title": "Zero-Trust Core Router Migration Readiness",
+    "date": "2026-11-17",
+    "time_utc": "13:30",
+    "duration_minutes": 45,
+    "status": "past",
+    "attendees": [
+      "nadia.okafor@northwind.example",
+      "tomasz.kowalczyk@northwind.example",
+      "mei-ling.zhou@northwind.example"
+    ],
+    "agenda": [
+      "Inspect mTLS certificate rotation rehearsal plan for Lakeside staging ring",
+      "Verify automated rollback thresholds for Aurora Core router nodes",
+      "Confirm immutable privileged-access logging format for annual audit"
+    ]
+  },
+  {
+    "id": "M-005",
+    "title": "Q4 Fiber Rollout Go/No-Go Checkpoint",
+    "date": "2026-11-25",
+    "time_utc": "15:00",
+    "duration_minutes": 60,
+    "status": "upcoming",
+    "attendees": [
+      "nadia.okafor@northwind.example",
+      "tomasz.kowalczyk@northwind.example",
+      "priya.subramanian@northwind.example",
+      "devon.alvarez@northwind.example",
+      "callum.macleod@northwind.example"
+    ],
+    "agenda": [
+      "Verify Northern Corridor permit clearances and hardware arrival dates",
+      "Review updated Q4 optical transceiver CapEx variance",
+      "Make go/no-go decision for the December 2 cutover window",
+      "Lock enterprise customer maintenance notification timeline"
+    ]
+  },
+  {
+    "id": "M-006",
+    "title": "Enterprise Tier Pricing & SLA Sign-Off",
+    "date": "2026-12-01",
+    "time_utc": "16:30",
+    "duration_minutes": 60,
+    "status": "upcoming",
+    "attendees": [
+      "priya.subramanian@northwind.example",
+      "callum.macleod@northwind.example",
+      "devon.alvarez@northwind.example",
+      "mei-ling.zhou@northwind.example"
+    ],
+    "agenda": [
+      "Review 3-year margin sensitivity model for Platinum 99.99% tier",
+      "Approve revised SLA credit cap and failover wording",
+      "Validate security addendum clauses for regulated enterprise customers",
+      "Sign off on Q1 2027 commercial launch readiness"
+    ]
+  },
+  {
+    "id": "M-007",
+    "title": "Annual Security Audit & Compliance Briefing",
+    "date": "2026-12-08",
+    "time_utc": "14:00",
+    "duration_minutes": 90,
+    "status": "upcoming",
+    "attendees": [
+      "mei-ling.zhou@northwind.example",
+      "nadia.okafor@northwind.example",
+      "tomasz.kowalczyk@northwind.example",
+      "devon.alvarez@northwind.example"
+    ],
+    "agenda": [
+      "Review Aurora Core zero-trust audit evidence package and log exports",
+      "Confirm closure of Summit Billing v4 per-tenant rate-limiting finding",
+      "Finalize external assessor interview schedule and system demo roles",
+      "Approve FY27 security compliance tooling OpEx envelope"
+    ]
+  }
+]
