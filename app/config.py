@@ -103,6 +103,15 @@ MODEL_ROUTING_TABLE: Final[dict[str, dict[str, str]]] = {
             "attendee_dossiers and account_history with low latency."
         ),
     },
+    "approval_gate_agent": {
+        "tier": "FAST_MODEL",
+        "model": FAST_MODEL,
+        "task_complexity": "low",
+        "rationale": (
+            "Deterministic HITL checkpoint extracting draft_id and invoking "
+            "ADK's native confirmation-gated request_brief_approval tool."
+        ),
+    },
     "presenter_agent": {
         "tier": "FAST_MODEL",
         "model": FAST_MODEL,

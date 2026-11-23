@@ -1026,17 +1026,13 @@ class SendBriefToAttendeesInput(StrictSchema):
         min_length=10,
         max_length=32,
         pattern=DRAFT_ID_PATTERN,
-        description="Identifier of an approved brief draft to deliver.",
-    )
-    approval_confirmed: bool = Field(
-        default=False,
-        description="Must be True only after a human explicitly approved the draft shown by request_brief_approval.",
+        description="Identifier of a staged brief draft to deliver after ADK human confirmation.",
     )
     recipient_override: list[str] | None = Field(
         default=None,
         min_length=1,
         max_length=20,
-        description="Optional list of 1-20 recipient emails overriding the meeting's default attendees.",
+        description="Optional list of 1-20 invited attendee emails overriding the meeting's default attendees.",
     )
 
     @field_validator("recipient_override")

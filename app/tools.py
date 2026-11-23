@@ -1028,8 +1028,8 @@ def request_brief_approval(
 
     new_status: Any = "pending_approval"
     next_step = (
-        "Present the brief preview and recipients to the user and wait for explicit approval. "
-        f"Only after they confirm, call send_brief_to_attendees(draft_id='{record.draft_id}', approval_confirmed=True)."
+        "Present the brief preview and recipients to the user and wait for explicit approval "
+        "via ADK's native confirmation prompt before calling send_brief_to_attendees."
     )
 
     if tool_context is not None:
@@ -1039,8 +1039,8 @@ def request_brief_approval(
             if callable(request_fn):
                 request_fn(
                     hint=(
-                        f"Approve sending brief '{record.brief.title}' ({record.draft_id}) "
-                        f"to {len(record.brief.recipients)} attendees?"
+                        f"Approve brief '{record.brief.title}' ({record.draft_id}) "
+                        f"for {len(record.brief.recipients)} attendees?"
                     ),
                     payload={
                         "draft_id": record.draft_id,
@@ -1052,8 +1052,8 @@ def request_brief_approval(
         elif getattr(confirmation, "confirmed", False):
             new_status = "approved"
             next_step = (
-                f"Human approval confirmed. You may now call "
-                f"send_brief_to_attendees(draft_id='{record.draft_id}', approval_confirmed=True)."
+                f"Human approval confirmed via ADK ToolConfirmation for draft '{record.draft_id}'. "
+                "The brief has NOT been sent yet; call send_brief_to_attendees when the user asks to send."
             )
         else:
             new_status = "rejected"
@@ -1103,36 +1103,34 @@ def send_brief_to_attendees(
             min_length=10,
             max_length=32,
             pattern=r"^DRF-[A-Z0-9]{6,12}$",
-            description="Identifier of an approved brief draft to deliver.",
+            description="Identifier of a staged brief draft to deliver after ADK human confirmation.",
         ),
     ],
-    approval_confirmed: Annotated[
-        bool,
-        Field(
-            description="Must be True only after explicit human approval following request_brief_approval.",
-        ),
-    ] = False,
     recipient_override: Annotated[
         list[str] | None,
         Field(
             min_length=1,
             max_length=20,
-            description="Optional list of 1-20 '@northwind.example' emails overriding default attendees.",
+            description="Optional list of 1-20 invited '@northwind.example' emails overriding default attendees.",
         ),
     ] = None,
+    tool_context: ToolContext | None = None,
 ) -> dict[str, Any]:
-    """Perform a simulated delivery of an approved brief by writing to ``runtime/outbox.json``.
+    """Perform a simulated delivery of a brief by writing to ``runtime/outbox.json``.
 
-    Enforces the human-approval gate: refuses to deliver any draft that has not
-    passed through ``request_brief_approval`` and received explicit confirmation.
+    Gated by ADK's native ``FunctionTool(..., require_confirmation=True)`` stop
+    and defense-in-depth verification of ``tool_context.tool_confirmation``:
+    refuses delivery unless explicit human confirmation is present. Also verifies
+    every recipient belongs to the meeting's canonical invite list.
 
     Args:
         draft_id: Draft identifier created by ``draft_meeting_brief`` (matching
             ``^DRF-[A-Z0-9]{6,12}$``).
-        approval_confirmed: Boolean confirming the human explicitly approved the
-            draft presented by ``request_brief_approval`` (default ``False``).
         recipient_override: Optional list of 1-20 recipient emails replacing the
-            meeting's default attendee list. Must use ``@northwind.example``.
+            meeting's default attendee list. Every address must be on the
+            meeting's invite list (``@northwind.example``).
+        tool_context: ADK runtime ``ToolContext`` injected automatically by ADK
+            (hidden from the LLM schema) carrying the native ``ToolConfirmation``.
 
     Returns:
         On success:
@@ -1143,8 +1141,8 @@ def send_brief_to_attendees(
     When NOT to use:
         - Do NOT use this tool to compose or revise a brief; call
           ``draft_meeting_brief`` first.
-        - Do NOT use this tool before requesting human sign-off; call
-          ``request_brief_approval`` first and wait for confirmation.
+        - Do NOT use this tool to preview a draft without sending; call
+          ``request_brief_approval`` instead.
         - Do NOT use this tool to archive post-meeting notes; call
           ``save_meeting_outcome`` instead.
     """
@@ -1152,30 +1150,30 @@ def send_brief_to_attendees(
         validated = SendBriefToAttendeesInput.model_validate(
             {
                 "draft_id": draft_id,
-                "approval_confirmed": approval_confirmed,
                 "recipient_override": recipient_override,
             }
         )
     except ValidationError as exc:
         return _error_response(
             _format_validation_error(exc),
-            "Provide a valid draft_id ('DRF-XXXXXXXX'), set approval_confirmed=True only after "
-            "human approval, and ensure any recipient_override contains 1-20 valid email addresses.",
+            "Provide a valid draft_id ('DRF-XXXXXXXX') and ensure any recipient_override "
+            "contains 1-20 valid email addresses on the meeting invite list.",
         )
 
     try:
         drafts = _load_drafts()
+        meetings = _load_meetings()
     except Exception as exc:
         return _error_response(
-            f"Unable to load staged drafts: {type(exc).__name__}: {exc}",
-            "Call draft_meeting_brief to stage a draft, request approval via request_brief_approval, then retry.",
+            f"Unable to load staged drafts or meeting invite list: {type(exc).__name__}: {exc}",
+            "Call draft_meeting_brief to stage a draft, request human confirmation, then retry.",
         )
 
     record = drafts.get(validated.draft_id)
     if record is None:
         return _error_response(
             f"Cannot send: draft '{validated.draft_id}' was not found.",
-            "Call draft_meeting_brief first to generate a valid draft_id, then call request_brief_approval.",
+            "Call draft_meeting_brief first to generate a valid draft_id, then request human approval.",
         )
 
     if record.sent:
@@ -1190,18 +1188,19 @@ def send_brief_to_attendees(
             f"Ask the user for requested revisions and call draft_meeting_brief(meeting_id='{record.meeting_id}') to create a new draft.",
         )
 
-    if record.approval_status == "draft":
+    # Defense-in-depth check alongside FunctionTool(..., require_confirmation=True):
+    # require an explicit confirmed ADK ToolConfirmation before touching outbox.json.
+    confirmation = (
+        getattr(tool_context, "tool_confirmation", None)
+        if tool_context is not None
+        else None
+    )
+    if not (confirmation and getattr(confirmation, "confirmed", False)):
         return _error_response(
-            f"Delivery blocked: human approval has not been requested for draft '{validated.draft_id}'.",
-            f"Call request_brief_approval(draft_id='{validated.draft_id}') first, show the preview to the user, "
-            "and wait for explicit confirmation before calling send_brief_to_attendees.",
-        )
-
-    if record.approval_status == "pending_approval" and not validated.approval_confirmed:
-        return _error_response(
-            f"Delivery blocked: draft '{validated.draft_id}' is awaiting explicit human confirmation.",
-            "Confirm with the user that they approve sending this brief, then re-call "
-            f"send_brief_to_attendees(draft_id='{validated.draft_id}', approval_confirmed=True).",
+            f"Delivery blocked: send_brief_to_attendees for draft '{validated.draft_id}' "
+            "requires explicit human approval via ADK native ToolConfirmation.",
+            "Trigger ADK's native confirmation prompt (FunctionTool with require_confirmation=True) "
+            "and obtain explicit human confirmation before attempting delivery.",
         )
 
     recipients = validated.recipient_override or record.brief.recipients
@@ -1211,6 +1210,16 @@ def send_brief_to_attendees(
             f"Delivery blocked: recipient(s) outside approved Northwind Telecom domain: {', '.join(disallowed)}.",
             "Use only '@northwind.example' addresses returned by fetch_meeting_details or lookup_attendee_profile.",
         )
+
+    target_meeting = next((m for m in meetings if m.id == record.meeting_id), None)
+    if target_meeting is not None:
+        invited_set = {addr.lower() for addr in target_meeting.attendees}
+        uninvited = [addr for addr in recipients if addr.lower() not in invited_set]
+        if uninvited:
+            return _error_response(
+                f"Delivery blocked: recipient(s) {uninvited} are not on the invite list for {record.meeting_id}.",
+                f"Send only to invited attendees for {record.meeting_id}: {', '.join(target_meeting.attendees)}.",
+            )
 
     delivery_id = _new_id("MSG")
     sent_at = _utc_now_iso()
