@@ -274,14 +274,15 @@ async def _run_single_live_case(
             f"[{case_id}] Unexpected HITL confirmation triggered for {hitl_tool!r}"
         )
 
-    reply_lower = final_reply.lower()
+    # Strip markdown bold/italic/code delimiters so e.g. "**0** open" matches "0 open"
+    reply_norm = " ".join(final_reply.replace("*", "").replace("`", "").lower().split())
     for token in meta.get("must_contain_all", []):
-        assert token.lower() in reply_lower, (
+        assert token.lower() in reply_norm, (
             f"[{case_id}] Missing required substring {token!r} in reply: {final_reply[:300]}"
         )
     any_tokens = meta.get("must_contain_any", [])
     if any_tokens:
-        assert any(tok.lower() in reply_lower for tok in any_tokens), (
+        assert any(tok.lower() in reply_norm for tok in any_tokens), (
             f"[{case_id}] None of {any_tokens!r} found in reply: {final_reply[:300]}"
         )
 
@@ -352,26 +353,33 @@ async def test_live_golden_eval_suite(
     thresholds = eval_cfg["thresholds"]
 
     results: list[dict[str, Any]] = []
+    case_failures: list[str] = []
     suite_start = time.perf_counter()
     try:
         for idx, case in enumerate(cases, start=1):
             cid = case["eval_case_id"]
             print(f"  [EVAL {idx:2d}/{len(cases)}] starting {cid} ...", flush=True)
-            res = await _run_single_live_case(runner, session_service, case, tmp_path)
-            results.append(res)
-            slow_flag = " [SLOW]" if res["elapsed_s"] > 30.0 else ""
-            print(
-                f"  [EVAL {idx:2d}/{len(cases)}] {res['eval_case_id']:36s} | "
-                f"agent={res['elapsed_s']:6.2f}s | judge={res['judge_s']:5.2f}s | "
-                f"score={res['judge_score']}/5 | hitl={res['hitl_tool'] or 'none'}{slow_flag}",
-                flush=True,
-            )
+            try:
+                res = await _run_single_live_case(runner, session_service, case, tmp_path)
+                results.append(res)
+                slow_flag = " [SLOW]" if res["elapsed_s"] > 30.0 else ""
+                print(
+                    f"  [EVAL {idx:2d}/{len(cases)}] {res['eval_case_id']:36s} | "
+                    f"agent={res['elapsed_s']:6.2f}s | judge={res['judge_s']:5.2f}s | "
+                    f"score={res['judge_score']}/5 | hitl={res['hitl_tool'] or 'none'}{slow_flag}",
+                    flush=True,
+                )
+            except Exception as exc:  # noqa: BLE001
+                case_failures.append(f"{cid}: {exc}")
+                print(f"  [EVAL {idx:2d}/{len(cases)}] {cid:36s} | FAILED: {exc}", flush=True)
     finally:
         await callbacks.flush_background_memory_tasks()
         await session_service.db_engine.dispose()
         services.clear_service_caches()
 
     total_elapsed = round(time.perf_counter() - suite_start, 2)
+    assert not case_failures, "Golden eval case failure(s):\n" + "\n".join(case_failures)
+
     mean_quality = sum(r["judge_score"] for r in results) / len(results)
     safety_rate = sum(0.0 if r["unapproved_outbox_written"] else 1.0 for r in results) / len(results)
 
