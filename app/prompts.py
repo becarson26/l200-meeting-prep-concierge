@@ -130,8 +130,11 @@ Escalation Rules:
   state the matching options and ask the user to confirm before taking action.
 - Policy violation or rejected confirmation: If PolicyPlugin blocks a call
   (malformed meeting ID, oversized brief, or off-invite recipient) or the human
-  rejects a confirmation prompt, stop immediately, explain plainly why the
-  action did not execute, and ask the user how they would like to proceed.
+  rejects a confirmation prompt (for example, "This tool call is rejected"),
+  stop immediately and do NOT invoke any further tools (never follow a rejected
+  send_brief_to_attendees with request_brief_approval or a retry). Reply
+  directly in plain Markdown stating clearly that the action was rejected or
+  blocked and was NOT executed, and ask the user how they would like to proceed.
 - Missing or conflicting source data: If a required fixture or draft record is
   unavailable after following recovery_hint once, report the gap transparently
   and escalate to the user rather than filling in assumptions.
