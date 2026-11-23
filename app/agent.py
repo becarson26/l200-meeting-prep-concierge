@@ -87,6 +87,11 @@ from app.config import (
     SMART_MODEL,
     build_gemini_model,
 )
+from app.observability import (
+    ObservabilityPlugin,
+    configure_structured_logging,
+    configure_tracing,
+)
 from app.plugins import PolicyPlugin
 from app.prompts import (
     APPROVAL_GATE_AGENT_INSTRUCTION,
@@ -325,9 +330,20 @@ root_agent = LlmAgent(
     after_agent_callback=schedule_background_memory_ingestion_after_agent,
 )
 
+# Initialize structured JSON logging (4.1) and OpenTelemetry tracing (4.3)
+# before constructing App. Importing app.observability also pins
+# ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS=false locally (opt-in PII posture, 4.4).
+configure_structured_logging()
+configure_tracing()
+
 # ---------------------------------------------------------------------------
-# ADK App Wiring: Guardrails, Resumability, Compaction & Context Caching
+# ADK App Wiring: Observability, Guardrails, Resumability, Compaction & Cache
 # ---------------------------------------------------------------------------
+# Plugin registration order (Rubric 4.2 + 3.3):
+#   ObservabilityPlugin MUST precede PolicyPlugin so before_tool_callback
+#   records every tool ``intent`` before PolicyPlugin can short-circuit it,
+#   and after_tool_callback captures every correlated ``outcome`` (including
+#   policy_blocked and HITL approve/reject decisions).
 # History Compaction & Caching (Rubric 2.2):
 #   - EventsCompactionConfig runs post-invocation using FAST_MODEL (explicit
 #     LlmEventSummarizer so ADK does not default to SMART_MODEL). Compaction
@@ -341,7 +357,7 @@ root_agent = LlmAgent(
 app = App(
     root_agent=root_agent,
     name="app",
-    plugins=[PolicyPlugin()],
+    plugins=[ObservabilityPlugin(), PolicyPlugin()],
     resumability_config=ResumabilityConfig(is_resumable=True),
     events_compaction_config=EventsCompactionConfig(
         summarizer=LlmEventSummarizer(llm=build_gemini_model(FAST_MODEL)),

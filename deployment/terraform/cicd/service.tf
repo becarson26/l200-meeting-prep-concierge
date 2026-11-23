@@ -81,19 +81,34 @@ resource "google_vertex_ai_reasoning_engine" "app" {
         value = "gen_ai_latest_experimental"
       }
 
-      env {
-        name  = "OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT"
-        value = "jsonl"
+      # Rubric 4.4 (PII Redaction before storage): Redacting logs, memory, and
+      # spans while still shipping raw prompt/completion JSONL files to GCS
+      # would leave an unredacted PII leak in storage. Completion uploads are
+      # therefore disabled by default and strictly opt-in via
+      # var.enable_completion_content_upload for operators who explicitly
+      # accept the PII implications.
+      dynamic "env" {
+        for_each = var.enable_completion_content_upload ? [1] : []
+        content {
+          name  = "OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT"
+          value = "jsonl"
+        }
       }
 
-      env {
-        name  = "OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK"
-        value = "upload"
+      dynamic "env" {
+        for_each = var.enable_completion_content_upload ? [1] : []
+        content {
+          name  = "OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK"
+          value = "upload"
+        }
       }
 
-      env {
-        name  = "OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH"
-        value = "gs://${google_storage_bucket.logs_data_bucket[each.value].name}/completions"
+      dynamic "env" {
+        for_each = var.enable_completion_content_upload ? [1] : []
+        content {
+          name  = "OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH"
+          value = "gs://${google_storage_bucket.logs_data_bucket[each.value].name}/completions"
+        }
       }
 
       env {

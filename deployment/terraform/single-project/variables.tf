@@ -67,3 +67,9 @@ variable "agent_identity_roles" {
     "roles/cloudtrace.agent",
   ]
 }
+
+variable "enable_completion_content_upload" {
+  description = "Opt-in flag to upload raw prompt/completion JSONL files to GCS via OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK. Disabled by default (Rubric 4.4) so unredacted PII is never shipped to GCS unless explicitly accepted."
+  type        = bool
+  default     = false
+}

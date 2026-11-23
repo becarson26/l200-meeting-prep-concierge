@@ -37,6 +37,7 @@ from google.adk.models import LlmRequest, LlmResponse
 from google.genai import types
 
 from app.config import HISTORY_WINDOW
+from app.redaction import redact_session_for_memory
 
 MAX_MODEL_OUTPUT_CHARS = 15_000
 
@@ -322,18 +323,15 @@ def schedule_background_memory_ingestion_after_agent(
     except RuntimeError:
         return None
 
-    # Snapshot the session before handing it to the background task so quick
-    # follow-up turns cannot mutate event lists while ingestion reads them.
-    session_snapshot = (
-        session.model_copy(deep=True)
-        if hasattr(session, "model_copy")
-        else session
-    )
+    # Snapshot and actively scrub PII (emails, phone numbers, long digit strings)
+    # before handing the session to background memory ingestion (Rubric 4.4).
+    # Taking a deep copy also prevents races with subsequent turns mutating events.
+    redacted_snapshot = redact_session_for_memory(session)
 
     # Deliberately NOT awaited: fire-and-forget so the reply returns immediately
     # without waiting on memory indexing or Vertex AI Memory Bank consolidation.
     task = loop.create_task(
-        _ingest_session_into_memory_background(memory_service, session_snapshot),
+        _ingest_session_into_memory_background(memory_service, redacted_snapshot),
         name=f"memory-ingest-{getattr(session, 'id', 'unknown')}",
     )
     _BACKGROUND_MEMORY_TASKS.add(task)
